@@ -1,0 +1,34 @@
+name: Trigger OMOS Build
+
+# When we push to main (non-docs), dispatch a build to omos-infra so it
+# rebuilds ghcr.io/onemindos/cloudtak-api:latest and rolls out to K8s.
+#
+# Requires secret: OMOS_INFRA_PAT
+#   A fine-grained PAT scoped to onemindos/omos-infra with:
+#     - Contents: Read and Write
+#     - Actions:  Read and Write
+#   Set it at: github.com/onemindos/CloudTAK/settings/secrets/actions
+on:
+  push:
+    branches: [main]
+    paths-ignore:
+      - "*.md"
+      - "docs/**"
+
+jobs:
+  trigger:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Dispatch build to omos-infra
+        uses: peter-evans/repository-dispatch@v3
+        with:
+          token: ${{ secrets.OMOS_INFRA_PAT }}
+          repository: onemindos/omos-infra
+          event-type: fork-updated
+
+      - name: Build summary
+        run: |
+          echo "## Deploy triggered" >> $GITHUB_STEP_SUMMARY
+          echo "- Dispatched \`fork-updated\` to onemindos/omos-infra" >> $GITHUB_STEP_SUMMARY
+          echo "- Build will: clone fork → inject plugins → build images → rollout restart cloudtak" >> $GITHUB_STEP_SUMMARY
+          echo "- Track at: https://github.com/onemindos/omos-infra/actions" >> $GITHUB_STEP_SUMMARY
